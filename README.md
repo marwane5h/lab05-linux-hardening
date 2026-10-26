@@ -37,32 +37,9 @@ sudo ./hardening.sh --force
 
 Here is what I check after a run — the firewall first, then whether root can still get in:
 
-```console
-$ sudo ufw status verbose
-Status: active
-Logging: on (low)
-Default: deny (incoming), allow (outgoing), disabled (routed)
-
-To                         Action      From
---                         ------      ----
-22/tcp                     LIMIT IN    Anywhere
-22/tcp (v6)                LIMIT IN    Anywhere (v6)
-
-$ ssh -o BatchMode=yes sysadmin_sec@server 'echo access-ok'
-access-ok
-
-$ ssh -o PubkeyAuthentication=no root@server
-root@server: Permission denied (publickey).
-
-$ sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication|authenticationmethods) '
-permitrootlogin no
-passwordauthentication no
-authenticationmethods publickey
-
-$ stat -c '%A %U:%G %n' /home/sysadmin_sec/.ssh /home/sysadmin_sec/.ssh/authorized_keys
-drwx------ sysadmin_sec sysadmin_sec /home/sysadmin_sec/.ssh
--rw------- sysadmin_sec sysadmin_sec /home/sysadmin_sec/.ssh/authorized_keys
-```
+![Firewall Status](assets/ufw.png)
+![SSH Security Settings](assets/publikey.png)
+![Root Login Blocked](assets/permission_denied.png)
 
 ## Key Engineering Takeaways
 
