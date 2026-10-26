@@ -36,10 +36,9 @@ sudo ./hardening.sh --force
 ## Verification & Evidence
 
 Here is what I check after a run — the firewall first, then whether root can still get in:
-
-![Firewall Status](assets/ufw.png)
-![SSH Security Settings](assets/publikey.png)
-![Root Login Blocked](assets/permission_denied.png)
+<img width="932" height="68" alt="permision denied" src="https://github.com/user-attachments/assets/65a8e8d7-1121-4266-912b-2c2fcced3eed" />
+<img width="662" height="194" alt="ufw" src="https://github.com/user-attachments/assets/d22e581a-f87c-4ea3-bda7-fef8684b9ef3" />
+<img width="943" height="95" alt="publikey" src="https://github.com/user-attachments/assets/ef99a1bd-b30d-4bf7-a3b4-ac8f5c8ecaed" />
 
 ## Key Engineering Takeaways
 
