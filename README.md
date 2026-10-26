@@ -1,28 +1,71 @@
-# Linux Security Labs
+# Lab 05 — Linux Server Hardening
 
-Two hands-on labs covering the operational side of Linux administration: hardening a
-fresh Ubuntu server and automating verified backups.
+![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%20LTS-E95420?logo=ubuntu&logoColor=white&style=flat-square)
+![Bash](https://img.shields.io/badge/Bash-5.x-4EAA25?logo=gnubash&logoColor=white&style=flat-square)
+![Security](https://img.shields.io/badge/Security-Hardened-2ea44f?style=flat-square)
+![UFW](https://img.shields.io/badge/UFW-Active-2C3E50?style=flat-square)
 
-| Lab | Focus | Stack |
+`hardening.sh` turns a stock Ubuntu 24.04 server into one I would actually expose to the internet: a single named admin account, key-only SSH, no root login, and a firewall that drops everything except port 22. It is idempotent and validates `sshd` before every reload, so a second run is safe and a fresh machine only needs one command.
+
+## Key Security Controls
+
+| Control Metric | Before Hardening | After Hardening |
 |---|---|---|
-| [Lab 05 — Linux Server Hardening](lab05-linux-hardening/) | SSH key-only access, root lockout, UFW, permissions, service reduction | Bash · OpenSSH · UFW · systemd |
-| [Lab 06 — Automated Backup System](lab06-automated-backup/) | Timestamped archives, integrity checks, retention, cron scheduling | Bash · tar · gzip · SHA-256 · cron |
+| **SSH Root Access** | `PermitRootLogin yes`; root can log in with a password | `PermitRootLogin no` plus `passwd -l root` — no superuser session left to steal |
+| **Password Auth** | Passwords accepted over SSH | `PasswordAuthentication no`, `AuthenticationMethods publickey` — removes the credential-stuffing surface |
+| **UFW Firewall** | Inactive; every listening service is reachable | Default `deny incoming`, only `22/tcp` allowed and rate-limited — one port to defend |
+| **Privileges (`sysadmin_sec`)** | Everyone logs in as root; no accountability | Named `sysadmin_sec` uses sudo, every command lands in `auth.log` — actions are attributable |
+| **File Permissions** | `~/.ssh` is 755, keys are readable | `~/.ssh` 700, `authorized_keys` 600, home 750 — sshd's own strict-mode checks are satisfied |
+| **Umask (`027`)** | `022` leaves new files world-readable | `027` creates files as 640 and directories as 750 — least privilege by default |
 
-## Repository layout
+None of these controls is exotic on its own. What matters is that they are applied together, in the right order, and verified: UFW opens port 22 *before* it is enabled, `sshd -t` runs *before* any reload, and every file the script touches is backed up first. That is the difference between a hardening checklist and a hardening tool.
 
+## Quick Start
+
+```bash
+git clone https://github.com/marwane5h/lab05-linux-hardening.git
+cd lab05-linux-hardening
+chmod +x hardening.sh
+sudo ./hardening.sh --force
 ```
-.
-├── lab05-linux-hardening/
-│   ├── README.md
-│   └── hardening.sh
-└── lab06-automated-backup/
-    ├── README.md
-    └── backup.sh
+
+> `--force` bypasses the "do you already have an SSH key?" guard. Keep a console session open, or make sure a key is deployed before running it — otherwise you can lock yourself out. `--dry-run` prints every change first.
+>
+> The script assumes Ubuntu 24.04 with `sudo` and `openssh-server`, and installs either one if it is missing. Use `--check` for a read-only audit, or `--only ssh,ufw` to change one layer at a time.
+
+## Verification & Evidence
+
+Here is what I check after a run — the firewall first, then whether root can still get in:
+
+```console
+$ sudo ufw status verbose
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     LIMIT IN    Anywhere
+22/tcp (v6)                LIMIT IN    Anywhere (v6)
+
+$ ssh -o BatchMode=yes sysadmin_sec@server 'echo access-ok'
+access-ok
+
+$ ssh -o PubkeyAuthentication=no root@server
+root@server: Permission denied (publickey).
+
+$ sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication|authenticationmethods) '
+permitrootlogin no
+passwordauthentication no
+authenticationmethods publickey
+
+$ stat -c '%A %U:%G %n' /home/sysadmin_sec/.ssh /home/sysadmin_sec/.ssh/authorized_keys
+drwx------ sysadmin_sec sysadmin_sec /home/sysadmin_sec/.ssh
+-rw------- sysadmin_sec sysadmin_sec /home/sysadmin_sec/.ssh/authorized_keys
 ```
 
-Both scripts are standalone, idempotent, support `--dry-run`, and were validated on
-Ubuntu 24.04 LTS (WSL2 and disposable containers). Each lab README documents the
-design, usage, and verification steps.
+## Key Engineering Takeaways
 
-> ⚠️ Run these scripts on a lab machine or VM. Hardening changes SSH access and firewall
-> rules; always keep a console session open until a new SSH connection has been tested.
+- **Smaller blast radius, by default.** One reachable port and no root login mean an attacker must clear key authentication before they can see anything else. UFW's default-deny is the backstop when a new service starts listening by accident.
+- **Accountability beats shared root.** `sysadmin_sec` with sudo gives every privileged action a name and a timestamp in `auth.log`; root becomes a break-glass path, not a daily login.
+- **Repeatable beats heroic.** Each run backs up the files it changes, refuses to reload an invalid `sshd` config, and can be replayed safely — so hardening becomes a deployable step instead of a one-off checklist.
