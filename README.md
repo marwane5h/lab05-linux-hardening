@@ -35,9 +35,21 @@ sudo ./hardening.sh --force
 
 ## Verification & Evidence
 
-Here is what I check after a run — the firewall first, then whether root can still get in:
-<img width="932" height="68" alt="permision denied" src="https://github.com/user-attachments/assets/65a8e8d7-1121-4266-912b-2c2fcced3eed" />
+Here are the test results after running the script:
+
+**1. SSH Directory & Key Permissions**
+Verifying that SSH keys and directories are restricted and protected from unauthorized access:
+
+<img width="932" height="68" alt="permission denied" src="https://github.com/user-attachments/assets/65a8e8d7-1121-4266-912b-2c2fcced3eed" />
+
+**2. Firewall Active Rules**
+Confirming UFW is active, denying all incoming traffic by default, and allowing only rate-limited SSH (port 22):
+
 <img width="662" height="194" alt="ufw" src="https://github.com/user-attachments/assets/d22e581a-f87c-4ea3-bda7-fef8684b9ef3" />
+
+**3. Hardened SSH Configuration**
+Checking that root login is disabled, password authentication is off, and SSH keys are required:
+
 <img width="943" height="95" alt="publikey" src="https://github.com/user-attachments/assets/ef99a1bd-b30d-4bf7-a3b4-ac8f5c8ecaed" />
 
 ## Key Engineering Takeaways
